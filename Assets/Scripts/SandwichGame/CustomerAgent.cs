@@ -37,7 +37,7 @@ namespace SandwichGame
 
         public void SetOrder(int wanted, float wait)
         {
-            Wanted = wanted;
+            Wanted = Mathf.Clamp(wanted, 1, GameConstants.MaxHamburgersPerOrder);
             Received = 0;
             WaitLeft = wait;
             RefreshBubble();
@@ -84,7 +84,7 @@ namespace SandwichGame
             {
                 OrderLabel.text = Remaining <= 0
                     ? "ขอบคุณ!"
-                    : Remaining == 1 ? "แซนด์วิช x1" : "แซนด์วิช x2";
+                    : "แฮมเบอร์เกอร์ x" + Remaining;
             }
 
             if (TimerFill != null)

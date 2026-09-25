@@ -287,7 +287,7 @@ namespace SandwichGame
             label.fontSize = 28;
             label.alignment = TextAnchor.MiddleCenter;
             label.color = new Color(0.15f, 0.12f, 0.10f);
-            label.text = "แซนด์วิช x1";
+            label.text = "แฮมเบอร์เกอร์ x1";
             var lrt = label.rectTransform;
             lrt.sizeDelta = new Vector2(200f, 50f);
             lrt.anchoredPosition = new Vector2(0f, 10f);

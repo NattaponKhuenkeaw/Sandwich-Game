@@ -39,5 +39,6 @@ namespace SandwichGame
         public const float GrillBurnSeconds = 10f;
         public const int CustomerCount = 3;
         public const int GrillSlotCount = 3;
+        public const int MaxHamburgersPerOrder = 2;
     }
 }

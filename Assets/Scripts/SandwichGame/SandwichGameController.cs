@@ -365,7 +365,7 @@ namespace SandwichGame
             if (customer.Busy || customer.Remaining <= 0) return false;
             if (!GameRules.CanServe(held.Kind))
             {
-                hud.ShowBanner("ลูกค้าไม่รับ " + GameRules.ThaiName(held.Kind), 0.9f);
+                hud.ShowBanner("ลูกค้ารับแค่แฮมเบอร์เกอร์", 0.9f);
                 return false;
             }
 

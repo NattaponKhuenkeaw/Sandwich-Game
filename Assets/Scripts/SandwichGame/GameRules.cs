@@ -6,7 +6,7 @@ namespace SandwichGame
     {
         public static int RandomOrderSize()
         {
-            return Random.Range(1, 3);
+            return Random.Range(1, GameConstants.MaxHamburgersPerOrder + 1);
         }
 
         public static bool MeetsTarget(int score, int target)
@@ -61,7 +61,7 @@ namespace SandwichGame
                 case ItemKind.CookedMeat: return "เนื้อสุก";
                 case ItemKind.BurnedMeat: return "เนื้อไหม้";
                 case ItemKind.Bun: return "ขนมปัง";
-                case ItemKind.Sandwich: return "แซนด์วิช";
+                case ItemKind.Sandwich: return "แฮมเบอร์เกอร์";
                 default: return kind.ToString();
             }
         }
