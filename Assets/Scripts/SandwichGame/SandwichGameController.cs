@@ -10,6 +10,8 @@ namespace SandwichGame
         [SerializeField] KitchenScene kitchen;
         [SerializeField] HudView hud;
         [SerializeField] GameAudio gameAudio;
+        [SerializeField] GameObject pointerEffectPrefab;
+        bool pointerEffectPressed;
 
         GamePhase phase = GamePhase.Title;
         ItemView held;
@@ -20,12 +22,20 @@ namespace SandwichGame
         int round = 1;
         float roundLeft = GameConstants.RoundDuration;
         float roundEndDelay;
+        Vector3[] customerStartPositions;
+        CustomerFlow customerFlow;
+        LevelCompleteView levelCompleteView;
+        GameOverView gameOverView;
+        PauseMenu pauseMenu;
+        public bool CanPause => phase == GamePhase.Playing || phase == GamePhase.RoundEnd;
 
         void Start()
         {
             Application.targetFrameRate = 60;
             BindScene();
-            hud.ShowTitle(BeginGame);
+            AudioSettings.Initialize();
+            BeginGame();
+            pauseMenu = Instantiate(Resources.Load<PauseMenu>("UI/PauseCanvas"), transform);
         }
 
         void BindScene()
@@ -40,7 +50,15 @@ namespace SandwichGame
                 KitchenFactory.Build(kitchen);
             }
 
+            if (pointerEffectPrefab == null)
+                pointerEffectPrefab = Resources.Load<GameObject>("VFX/Click Dust");
+
             kitchen.PrepareRuntimeSlots();
+            customerFlow = kitchen.GetComponent<CustomerFlow>();
+            customerStartPositions = new Vector3[kitchen.Customers.Length];
+            for (int i = 0; i < kitchen.Customers.Length; i++)
+                if (kitchen.Customers[i] != null)
+                    customerStartPositions[i] = kitchen.Customers[i].transform.localPosition;
 
             if (hud == null)
                 hud = GetComponentInChildren<HudView>(true);
@@ -62,15 +80,25 @@ namespace SandwichGame
 
         void Update()
         {
+            if (pauseMenu != null && pauseMenu.IsPaused) return;
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+            HandleLevelTestShortcut();
+#endif
             hud.Refresh(round, phase == GamePhase.Playing ? roundLeft : 0f, score, target, lives);
             UpdateHover();
 
             if (phase == GamePhase.Playing)
             {
                 TickRound();
-                TickCooking();
-                TickCustomers();
-                HandleDrag();
+                if (phase == GamePhase.Playing)
+                {
+                    TickCooking();
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+                    HandleCustomerTestShortcut();
+#endif
+                    TickCustomers();
+                    HandleDrag();
+                }
             }
             else if (phase == GamePhase.RoundEnd)
             {
@@ -83,30 +111,51 @@ namespace SandwichGame
                 HandleDragVisualOnly();
             }
 
+            bool fryingRawMeat = false;
+            bool fryingCookedMeat = false;
+            bool fryingBurnedMeat = false;
+            if (phase == GamePhase.Playing)
+                foreach (var item in kitchen.GrillItems)
+                {
+                    if (item == null || item.Held) continue;
+                    if (item.Kind == ItemKind.RawMeat) fryingRawMeat = true;
+                    if (item.Kind == ItemKind.CookedMeat) fryingCookedMeat = true;
+                    if (item.Kind == ItemKind.BurnedMeat) fryingBurnedMeat = true;
+                }
+            gameAudio.SetRawMeatFrying(fryingRawMeat);
+            gameAudio.SetCookedMeatFrying(fryingCookedMeat);
+            gameAudio.SetBurnedMeatFrying(fryingBurnedMeat);
             FaceBubblesToCamera();
         }
 
         void BeginGame()
         {
             StopAllCoroutines();
+            if (gameOverView != null) gameOverView.Hide();
+            if (levelCompleteView != null) levelCompleteView.Hide();
+            if (customerFlow != null) customerFlow.gameObject.SetActive(true);
             score = 0;
             target = GameConstants.StartingTarget;
             lives = GameConstants.StartingLives;
             round = 1;
-            StartRound(false);
+            StartRound();
             hud.HideOverlay();
         }
 
-        void StartRound(bool keepCustomers)
+        void StartRound()
         {
+            // Cancel pending reactions/replacements before discarding the previous round's customers.
+            StopAllCoroutines();
+            pointerEffectPressed = false;
+            hover = null;
             phase = GamePhase.Playing;
             roundLeft = GameConstants.RoundDuration;
             ClearLooseItems();
-            if (!keepCustomers)
-            {
+            if (customerFlow != null && customerFlow.Exit != null)
+                customerFlow.Begin(kitchen);
+            else
                 for (int i = 0; i < kitchen.Customers.Length; i++)
                     ResetCustomer(kitchen.Customers[i], true);
-            }
         }
 
         void TickRound()
@@ -134,20 +183,51 @@ namespace SandwichGame
         {
             if (GameRules.MeetsTarget(score, target))
             {
-                round++;
-                target = GameRules.NextTarget(target);
-                StartRound(true);
+                StopAllCoroutines();
+                phase = GamePhase.LevelComplete;
+                if (customerFlow != null) customerFlow.gameObject.SetActive(false);
+                if (levelCompleteView == null)
+                {
+                    var prefab = Resources.Load<LevelCompleteView>("UI/LevelCompleteCanvas");
+                    if (prefab == null) throw new System.InvalidOperationException("LevelCompleteCanvas prefab missing");
+                    levelCompleteView = Instantiate(prefab, transform);
+                }
+                levelCompleteView.Show(round, score, target, GameRules.NextTarget(target), AdvanceLevel);
                 return;
             }
 
             if (lives <= 0)
             {
-                phase = GamePhase.GameOver;
-                hud.ShowGameOver(score, round, BeginGame);
+                EnterGameOver();
                 return;
             }
 
-            StartRound(true);
+            StartRound();
+        }
+
+        void EnterGameOver()
+        {
+            StopAllCoroutines();
+            phase = GamePhase.GameOver;
+            if (customerFlow != null) customerFlow.gameObject.SetActive(false);
+            if (gameOverView == null)
+            {
+                var prefab = Resources.Load<GameOverView>("UI/GameOverCanvas");
+                if (prefab == null) throw new System.InvalidOperationException("GameOverCanvas prefab missing");
+                gameOverView = Instantiate(prefab, transform);
+            }
+            hud.HideOverlay();
+            gameOverView.Show(round, score, target, BeginGame);
+        }
+
+        void AdvanceLevel()
+        {
+            if (phase != GamePhase.LevelComplete) return;
+            levelCompleteView.Hide();
+            if (customerFlow != null) customerFlow.gameObject.SetActive(true);
+            round++;
+            target = GameRules.NextTarget(target);
+            StartRound();
         }
 
         void TickCooking()
@@ -170,7 +250,6 @@ namespace SandwichGame
                         item.Kind = ItemKind.CookedMeat;
                         item.GrillTime = 0f;
                         item.ApplyKindVisual();
-                        gameAudio.Ding();
                     }
                 }
                 else if (item.Kind == ItemKind.CookedMeat)
@@ -182,7 +261,6 @@ namespace SandwichGame
                         item.Kind = ItemKind.BurnedMeat;
                         item.GrillTime = 0f;
                         item.ApplyKindVisual();
-                        gameAudio.Burn();
                         hud.ShowBanner("เนื้อไหม้!", 0.8f);
                     }
                 }
@@ -192,6 +270,46 @@ namespace SandwichGame
                 kitchen.GrillLight.intensity = anyCooking ? 2.3f : 1.2f;
         }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+        void HandleLevelTestShortcut()
+        {
+            if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame && phase == GamePhase.Playing)
+            {
+                lives = 0;
+                roundLeft = 0f;
+                gameAudio.Fail();
+                EnterGameOver();
+                return;
+            }
+            if (Keyboard.current == null || !Keyboard.current.nKey.wasPressedThisFrame) return;
+            if (phase == GamePhase.LevelComplete)
+            {
+                AdvanceLevel();
+            }
+            else if (phase == GamePhase.Playing)
+            {
+                // Complete this round immediately so the results screen can be tested.
+                score = Mathf.Max(score, target);
+                roundLeft = 0f;
+                gameAudio.RoundWin();
+                FinishRoundPause();
+            }
+        }
+
+        void HandleCustomerTestShortcut()
+        {
+            if (phase != GamePhase.Playing || Keyboard.current == null || !Keyboard.current.pKey.wasPressedThisFrame)
+                return;
+            foreach (var customer in kitchen.Customers)
+            {
+                if (customer == null || customer.Busy || !customer.gameObject.activeInHierarchy)
+                    continue;
+                customer.WaitLeft = 0f;
+                break;
+            }
+        }
+#endif
+
         void TickCustomers()
         {
             for (int i = 0; i < kitchen.Customers.Length; i++)
@@ -200,8 +318,13 @@ namespace SandwichGame
                 if (c.Busy) continue;
                 c.WaitLeft -= Time.deltaTime;
                 c.RefreshBubble();
+                if (!c.TimeLowVoicePlayed && c.WaitLeft > 0f && c.WaitLeft <= GameConstants.CustomerWait * 0.2f)
+                {
+                    c.TimeLowVoicePlayed = true;
+                    gameAudio.CustomerTimeLow();
+                }
                 if (c.WaitLeft > 0f) continue;
-                gameAudio.Fail();
+                gameAudio.CustomerNoFood();
                 hud.ShowBanner("ลูกค้าหมดเวลา", 0.8f);
                 StartCoroutine(ReplaceCustomer(c, false));
             }
@@ -213,26 +336,58 @@ namespace SandwichGame
             if (mouse == null) return;
 
             if (mouse.leftButton.wasPressedThisFrame && !PointerOnUi())
+            {
+                pointerEffectPressed = true;
+                PlayPointerEffect();
                 TryPickup();
+            }
 
             if (held != null)
                 MoveHeld();
 
-            if (mouse.leftButton.wasReleasedThisFrame && held != null)
-                DropHeld();
+            if (mouse.leftButton.wasReleasedThisFrame)
+            {
+                if (pointerEffectPressed) PlayPointerEffect();
+                pointerEffectPressed = false;
+                if (held != null) DropHeld();
+            }
         }
 
         void HandleDragVisualOnly()
         {
+            pointerEffectPressed = false;
             if (held == null) return;
             MoveHeld();
             if (Mouse.current != null && Mouse.current.leftButton.wasReleasedThisFrame)
                 ReturnHeld();
         }
 
+        void PlayPointerEffect()
+        {
+            if (pointerEffectPrefab == null || kitchen == null) return;
+            float height = kitchen.DragPlane != null ? kitchen.DragPlane.position.y : 1.16f;
+            var plane = new Plane(Vector3.up, new Vector3(0f, height + 0.14f, 0f));
+            var ray = ScreenRay();
+            if (!plane.Raycast(ray, out float distance) || distance < 0f) return;
+            var effect = Instantiate(pointerEffectPrefab, ray.GetPoint(distance), pointerEffectPrefab.transform.rotation);
+            // Safety cleanup also covers any child particles left running by the effect.
+            Destroy(effect, 5f);
+        }
+
         void TryPickup()
         {
-            if (RayHit(out var item, out var station, out _))
+            bool hit = RayHit(out var item, out var station, out _);
+            // Keep direct food and other stations precise; allow forgiving clicks around grilled meat.
+            if (item == null && (station == null || station.Kind == StationKind.Grill))
+            {
+                var nearbyMeat = NearestGrillItem();
+                if (nearbyMeat != null)
+                {
+                    Grab(nearbyMeat);
+                    return;
+                }
+            }
+            if (hit)
             {
                 if (item != null)
                 {
@@ -255,7 +410,7 @@ namespace SandwichGame
 
                 if (station.Kind == StationKind.Plate && kitchen.PlateItem != null)
                     Grab(kitchen.PlateItem);
-                else if (station.Kind == StationKind.Grill && kitchen.GrillItems[station.SlotIndex] != null)
+                else if (station.Kind == StationKind.Grill && station.SlotIndex >= 0 && station.SlotIndex < kitchen.GrillItems.Length && kitchen.GrillItems[station.SlotIndex] != null)
                     Grab(kitchen.GrillItems[station.SlotIndex]);
             }
         }
@@ -273,16 +428,11 @@ namespace SandwichGame
         void MoveHeld()
         {
             var ray = ScreenRay();
-            if (kitchen.DragPlane != null && kitchen.DragPlane.GetComponent<Collider>().Raycast(ray, out var hit, 40f))
-            {
-                held.transform.position = Vector3.Lerp(held.transform.position, hit.point + Vector3.up * 0.14f, 18f * Time.deltaTime);
-            }
-            else
-            {
-                var plane = new Plane(Vector3.up, new Vector3(0f, 1.16f, 0f));
-                if (plane.Raycast(ray, out float enter))
-                    held.transform.position = Vector3.Lerp(held.transform.position, ray.GetPoint(enter) + Vector3.up * 0.14f, 18f * Time.deltaTime);
-            }
+            float dragHeight = kitchen.DragPlane != null ? kitchen.DragPlane.position.y : 1.16f;
+            // Intersect at the lifted height so the item stays on the cursor's ray.
+            var plane = new Plane(Vector3.up, new Vector3(0f, dragHeight + 0.14f, 0f));
+            if (plane.Raycast(ray, out float enter))
+                held.transform.position = ray.GetPoint(enter);
         }
 
         void DropHeld()
@@ -310,6 +460,8 @@ namespace SandwichGame
 
         bool PlaceOnGrill(int slot)
         {
+            if (slot < 0 || slot >= kitchen.GrillItems.Length || slot >= kitchen.GrillAnchors.Length || kitchen.GrillAnchors[slot] == null)
+                return false;
             if (!GameRules.CanPlaceOnGrill(held.Kind) && held.Kind != ItemKind.BurnedMeat)
                 return false;
             if (kitchen.GrillItems[slot] != null) return false;
@@ -326,6 +478,8 @@ namespace SandwichGame
 
         bool PlaceOnPlate()
         {
+            kitchen.PrepareRuntimeSlots();
+            if (kitchen.PlateAnchor == null) return false;
             if (kitchen.PlateItem == null)
             {
                 if (held.Kind != ItemKind.Bun && held.Kind != ItemKind.CookedMeat && held.Kind != ItemKind.Sandwich)
@@ -372,6 +526,9 @@ namespace SandwichGame
             DestroyItem(held);
             held = null;
             customer.Received++;
+            if (customer.Wanted == 2 && customer.Received == 1)
+                customer.WaitLeft = Mathf.Min(GameConstants.CustomerWait,
+                    customer.WaitLeft + GameConstants.CustomerWait * GameConstants.PartialOrderWaitBonus);
             customer.RefreshBubble();
             if (customer.Remaining > 0)
             {
@@ -389,7 +546,7 @@ namespace SandwichGame
         void ReturnHeld()
         {
             if (held == null) return;
-            if (held.HomeKind == StationKind.Grill && held.HomeSlot >= 0 && kitchen.GrillItems[held.HomeSlot] == null)
+            if (held.HomeKind == StationKind.Grill && held.HomeSlot >= 0 && held.HomeSlot < kitchen.GrillItems.Length && kitchen.GrillItems[held.HomeSlot] == null)
             {
                 var item = held;
                 held = null;
@@ -417,6 +574,17 @@ namespace SandwichGame
         IEnumerator ReplaceCustomer(CustomerAgent customer, bool happy)
         {
             customer.Busy = true;
+            var visual = customer.GetComponentInChildren<BlinkCustomerVisual>(true);
+            if (visual != null)
+            {
+                visual.React(happy);
+                yield return new WaitForSeconds(visual.ReactionDuration);
+            }
+            if (customerFlow != null && customerFlow.Exit != null)
+            {
+                yield return customerFlow.Replace(customer);
+                yield break;
+            }
             var start = customer.transform.position;
             var down = start + Vector3.down * 1.4f + Vector3.right * (happy ? 0.4f : -0.4f);
             float t = 0f;
@@ -444,11 +612,22 @@ namespace SandwichGame
 
         void ResetCustomer(CustomerAgent customer, bool snap)
         {
+            customer.gameObject.SetActive(true);
+            if (snap) customer.Busy = false;
+            var visual = customer.GetComponentInChildren<BlinkCustomerVisual>(true);
+            if (visual != null)
+            {
+                var others = new BlinkCustomerVisual[kitchen.Customers.Length];
+                for (int i = 0; i < others.Length; i++)
+                    if (kitchen.Customers[i] != null) others[i] = kitchen.Customers[i].GetComponentInChildren<BlinkCustomerVisual>(true);
+                visual.ChooseAppearance(others);
+            }
             customer.SetOrder(GameRules.RandomOrderSize(), GameConstants.CustomerWait);
             if (snap)
             {
-                float[] xs = { -1.4f, 0f, 1.4f };
-                customer.transform.position = new Vector3(xs[customer.SlotIndex], 0f, 2.25f);
+                int index = System.Array.IndexOf(kitchen.Customers, customer);
+                if (index >= 0 && customerStartPositions != null && index < customerStartPositions.Length)
+                    customer.transform.localPosition = customerStartPositions[index];
             }
         }
 
@@ -535,6 +714,29 @@ namespace SandwichGame
             }
 
             return false;
+        }
+
+        ItemView NearestGrillItem()
+        {
+            if (kitchen.Camera == null || Mouse.current == null) return null;
+            Vector2 mouse = Mouse.current.position.ReadValue();
+            // Scale with the game view so the assistance feels consistent at different resolutions.
+            float radius = Mathf.Max(24f, kitchen.Camera.pixelHeight * 45f / 1080f);
+            float bestDistance = radius * radius;
+            ItemView best = null;
+            foreach (var meat in kitchen.GrillItems)
+            {
+                if (meat == null || meat.Held || !meat.gameObject.activeInHierarchy) continue;
+                var screen = kitchen.Camera.WorldToScreenPoint(meat.transform.position);
+                if (screen.z <= 0f) continue;
+                float distance = (mouse - new Vector2(screen.x, screen.y)).sqrMagnitude;
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    best = meat;
+                }
+            }
+            return best;
         }
 
         StationTarget NearestStation()

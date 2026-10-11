@@ -24,6 +24,7 @@ namespace SandwichGame
         Title,
         Playing,
         RoundEnd,
+        LevelComplete,
         GameOver
     }
 
@@ -32,6 +33,7 @@ namespace SandwichGame
         public const int StartingLives = 3;
         public const float RoundDuration = 90f;
         public const float CustomerWait = 28f;
+        public const float PartialOrderWaitBonus = 0.35f;
         public const int StartingTarget = 200;
         public const int ScorePerOrder = 100;
         public const int TargetIncrease = 500;

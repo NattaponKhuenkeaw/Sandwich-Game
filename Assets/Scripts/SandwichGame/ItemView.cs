@@ -14,6 +14,7 @@ namespace SandwichGame
         public Quaternion RestRotation;
         public Transform RestParent;
         public Renderer[] ColorRenderers;
+        public GameObject[] MeatVisuals;
 
         public void RememberHome()
         {
@@ -24,13 +25,19 @@ namespace SandwichGame
 
         public void ApplyKindVisual()
         {
+            if (MeatVisuals != null && MeatVisuals.Length == 3 && GameRules.IsMeat(Kind))
+            {
+                for (int i = 0; i < MeatVisuals.Length; i++)
+                    if (MeatVisuals[i] != null) MeatVisuals[i].SetActive(i == (int)Kind);
+                return;
+            }
             if (ColorRenderers == null) return;
-            var color = GameRules.ColorFor(Kind);
-            ApplyColor(color);
+            ApplyColor(GameRules.ColorFor(Kind));
         }
 
         public void ApplyColor(Color color)
         {
+            if (MeatVisuals != null && MeatVisuals.Length == 3 && GameRules.IsMeat(Kind)) return;
             if (ColorRenderers == null) return;
             for (int i = 0; i < ColorRenderers.Length; i++)
             {

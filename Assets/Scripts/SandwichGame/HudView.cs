@@ -38,16 +38,6 @@ namespace SandwichGame
             return hud;
         }
 
-        public void ShowTitle(UnityAction onOpen)
-        {
-            overlay.SetActive(true);
-            overlayTitle.text = "Sandwich Game";
-            overlayBody.text = "เกม 3D ขายแซนด์วิช\nคลิกค้างแล้วลากเนื้อไปเตา ปิ้ง 10 วินาที\nวางบนจานกับขนมปัง แล้วส่งให้ลูกค้า";
-            overlayButtonLabel.text = "เปิดร้าน";
-            overlayButton.onClick.RemoveAllListeners();
-            overlayButton.onClick.AddListener(onOpen);
-        }
-
         public void ShowGameOver(int score, int round, UnityAction onRetry)
         {
             overlay.SetActive(true);
@@ -162,7 +152,7 @@ namespace SandwichGame
             colors.highlightedColor = new Color(0.95f, 0.52f, 0.28f);
             colors.pressedColor = new Color(0.70f, 0.30f, 0.16f);
             overlayButton.colors = colors;
-            overlayButtonLabel = Label(buttonGo.transform, Vector2.zero, 340f, "เปิดร้าน", TextAnchor.MiddleCenter, 36);
+            overlayButtonLabel = Label(buttonGo.transform, Vector2.zero, 340f, "เล่นอีกครั้ง", TextAnchor.MiddleCenter, 36);
         }
 
         static void EnsureEventSystem()

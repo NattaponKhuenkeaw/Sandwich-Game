@@ -419,6 +419,13 @@ namespace SandwichGame
             var mat = new Material(litShader);
             mat.name = name;
             ApplyColor(mat, color, smooth, metal);
+            if (mat.HasProperty("_MinLight"))
+            {
+                mat.SetFloat("_MinLight", .38f);
+                mat.SetFloat("_AmbientCol", .6f);
+                mat.SetFloat("_Offset", .15f);
+                mat.SetFloat("_StpSmooth", .1f);
+            }
             return mat;
         }
 
@@ -439,7 +446,8 @@ namespace SandwichGame
         static void EnsureShader()
         {
             if (litShader != null) return;
-            litShader = Shader.Find("Universal Render Pipeline/Lit")
+            litShader = Shader.Find("SandwichGame/Simple Toon URP")
+                        ?? Shader.Find("Universal Render Pipeline/Lit")
                         ?? Shader.Find("Universal Render Pipeline/Simple Lit")
                         ?? Shader.Find("Standard")
                         ?? Shader.Find("Unlit/Color")

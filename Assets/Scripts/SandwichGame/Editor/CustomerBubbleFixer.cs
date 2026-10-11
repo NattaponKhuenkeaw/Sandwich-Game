@@ -88,24 +88,11 @@ namespace SandwichGame.EditorTools
         static bool ApplyToRoot(GameObject root, Sprite sprite)
         {
             bool changed = false;
-            var images = root.GetComponentsInChildren<Image>(true);
-            for (int i = 0; i < images.Length; i++)
+            foreach (var customer in root.GetComponentsInChildren<CustomerAgent>(true))
             {
-                var img = images[i];
-                if (img.sprite != sprite)
-                {
-                    img.sprite = sprite;
-                    changed = true;
-                }
-
-                var color = img.color;
-                if (color.a < 1f && color.r > 0.85f && color.g > 0.85f && color.b > 0.85f)
-                {
-                    img.color = new Color(color.r, color.g, color.b, 1f);
-                    changed = true;
-                }
-
-                img.canvasRenderer.cullTransparentMesh = false;
+                customer.RepairBubble();
+                customer.StyleOrderBubble();
+                changed = true;
             }
 
             var canvases = root.GetComponentsInChildren<Canvas>(true);

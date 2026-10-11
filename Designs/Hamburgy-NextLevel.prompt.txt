@@ -1,0 +1,3 @@
+Built-in image_gen mockup.
+Reference: Temp/GradientMenu.png.
+Prompt: Hamburgy next-level Canvas concept matching the current menu: cream radial gradient, faint ingredient motifs, low-poly outlined customers, compact burger logo, LEVEL COMPLETE / DAY 1, sales 850, target 200, next target 700, orange NEXT LEVEL button and cream MAIN MENU button. No Unity scene created.
