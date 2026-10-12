@@ -8,21 +8,18 @@ namespace SandwichGame
 {
     public class HudView : MonoBehaviour
     {
-        Text roundText;
-        Text timeText;
-        Text scoreText;
-        Text livesText;
-        Text hintText;
-        Text bannerText;
-        Text floatingText;
-        GameObject overlay;
-        Text overlayTitle;
-        Text overlayBody;
-        Button overlayButton;
-        Text overlayButtonLabel;
+        [SerializeField] GameplayHudView gameplayHud;
+        [SerializeField] Text hintText;
+        [SerializeField] Text bannerText;
+        [SerializeField] Text floatingText;
+        [SerializeField] GameObject overlay;
+        [SerializeField] Text overlayTitle;
+        [SerializeField] Text overlayBody;
+        [SerializeField] Button overlayButton;
+        [SerializeField] Text overlayButtonLabel;
         float bannerUntil;
         float floatingUntil;
-        Vector3 floatingStart;
+        [SerializeField] Vector3 floatingStart;
 
         public void EnsureBuilt()
         {
@@ -55,14 +52,7 @@ namespace SandwichGame
 
         public void Refresh(int round, float timeLeft, int score, int target, int lives)
         {
-            roundText.text = "รอบ " + round;
-            int sec = Mathf.CeilToInt(Mathf.Max(0f, timeLeft));
-            timeText.text = "เวลา " + (sec / 60) + ":" + (sec % 60).ToString("00");
-            scoreText.text = "คะแนน " + score + " / " + target;
-            scoreText.color = score >= target
-                ? new Color(0.35f, 0.85f, 0.45f)
-                : new Color(0.95f, 0.93f, 0.88f);
-            livesText.text = "ชีวิต " + new string('♥', Mathf.Max(0, lives));
+            gameplayHud.Refresh(round, timeLeft, score, target, lives);
         }
 
         public void ShowBanner(string message, float seconds)
@@ -93,7 +83,8 @@ namespace SandwichGame
                     floatingText.gameObject.SetActive(false);
             }
 
-            hintText.enabled = !overlay.activeSelf;
+            if (hintText != null)
+                hintText.enabled = overlay == null || !overlay.activeSelf;
         }
 
         void Build()
@@ -110,15 +101,7 @@ namespace SandwichGame
             scaler.matchWidthOrHeight = 0.5f;
             canvasGo.AddComponent<GraphicRaycaster>();
 
-            var top = Panel(canvasGo.transform, new Vector2(0f, -36f), new Vector2(1840f, 72f), new Color(0.08f, 0.06f, 0.05f, 0.72f));
-            var topRt = top.GetComponent<RectTransform>();
-            topRt.anchorMin = new Vector2(0.5f, 1f);
-            topRt.anchorMax = new Vector2(0.5f, 1f);
-
-            roundText = Label(top.transform, new Vector2(-680f, 0f), 220f, "รอบ 1", TextAnchor.MiddleLeft);
-            timeText = Label(top.transform, new Vector2(-360f, 0f), 260f, "เวลา 1:30", TextAnchor.MiddleLeft);
-            scoreText = Label(top.transform, new Vector2(40f, 0f), 420f, "คะแนน 0 / 200", TextAnchor.MiddleCenter);
-            livesText = Label(top.transform, new Vector2(680f, 0f), 280f, "ชีวิต ♥♥♥", TextAnchor.MiddleRight);
+            gameplayHud = Instantiate(Resources.Load<GameplayHudView>("UI/GameplayHud"), canvasGo.transform);
 
             hintText = Label(canvasGo.transform, new Vector2(0f, 48f), 1400f, "คลิกค้างเนื้อ → เตา 10 วินาที → จาน + ขนมปัง → ส่งลูกค้า", TextAnchor.MiddleCenter, 26);
             var hintRt = hintText.rectTransform;
@@ -157,7 +140,7 @@ namespace SandwichGame
 
         static void EnsureEventSystem()
         {
-            if (EventSystem.current != null) return;
+            if (Object.FindFirstObjectByType<EventSystem>(FindObjectsInactive.Include) != null) return;
             var es = new GameObject("EventSystem");
             es.AddComponent<EventSystem>();
             es.AddComponent<InputSystemUIInputModule>();

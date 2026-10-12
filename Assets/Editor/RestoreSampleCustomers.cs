@@ -6,10 +6,9 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-[InitializeOnLoad]
 public static class RestoreSampleCustomers
 {
-    static RestoreSampleCustomers() { EditorApplication.delayCall += Restore; }
+    [MenuItem("Sandwich Game/Setup/Restore Customer Templates")]
     static void Restore()
     {
         if (EditorApplication.isPlayingOrWillChangePlaymode || File.Exists("Temp/CustomersRestored.complete")) return;

@@ -179,6 +179,11 @@ namespace SandwichGame
                         ? new Color(0.92f, 0.62f, 0.18f)
                         : new Color(0.28f, 0.72f, 0.38f);
             }
+            if (Bubble != null)
+            {
+                var ui = Bubble.GetComponent<CustomerOrderUI>();
+                if (ui != null) ui.SetRemaining(Remaining);
+            }
         }
     }
 }

@@ -5,14 +5,9 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-[InitializeOnLoad]
 public static class ExportPolygonCity
 {
     private const string Output = "Assets/Prefabs/POLYGON_City_Objects.prefab";
-    static ExportPolygonCity()
-    {
-        if (!File.Exists("Temp/PolygonCityExport.complete")) EditorApplication.delayCall += Export;
-    }
 
     [MenuItem("Tools/POLYGON City/Export City Objects Prefab")]
     public static void Export()
@@ -21,7 +16,7 @@ public static class ExportPolygonCity
         Scene preview = default;
         try
         {
-            preview = EditorSceneManager.OpenPreviewScene("Assets/POLYGON city pack/scene/DemoScene.unity");
+            preview = EditorSceneManager.OpenPreviewScene("Assets/store/POLYGON city pack/scene/DemoScene.unity");
             var objects = preview.GetRootGameObjects();
             var city = new GameObject("POLYGON_City_Objects");
             SceneManager.MoveGameObjectToScene(city, preview);

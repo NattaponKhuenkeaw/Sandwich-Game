@@ -28,6 +28,7 @@ namespace SandwichGame
         GameOverView gameOverView;
         PauseMenu pauseMenu;
         public bool CanPause => phase == GamePhase.Playing || phase == GamePhase.RoundEnd;
+        public bool IsGameplayActive => phase == GamePhase.Playing;
 
         void Start()
         {

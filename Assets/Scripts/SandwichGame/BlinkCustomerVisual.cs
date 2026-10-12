@@ -7,8 +7,19 @@ namespace SandwichGame
         public int VariantIndex = -1;
         public Animator ReactionAnimator;
         public float ReactionDuration = 1.25f;
+        void OnEnable()
+        {
+            var customer = GetComponentInParent<CustomerAgent>();
+            if (customer == null) return;
+            var visuals = customer.GetComponentsInChildren<BlinkCustomerVisual>(true);
+            if (visuals.Length > 1 && visuals[0] != this) gameObject.SetActive(false);
+        }
         public void ChooseAppearance(BlinkCustomerVisual[] others)
         {
+            var customer = GetComponentInParent<CustomerAgent>();
+            if (customer != null)
+                foreach (var visual in customer.GetComponentsInChildren<BlinkCustomerVisual>(true))
+                    if (visual != this) visual.gameObject.SetActive(false);
             var choices = new System.Collections.Generic.List<int>();
             for (int i = 0; i < Variants.Length; i++)
             {

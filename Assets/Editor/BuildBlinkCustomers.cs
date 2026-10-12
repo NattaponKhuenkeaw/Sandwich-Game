@@ -8,13 +8,12 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using SandwichGame;
-[InitializeOnLoad]
 public static class BuildBlinkCustomers
 {
     const string Folder = "Assets/SandwichGame/Customers";
     const string Source = "Assets/store/Blink/Art/Characters/LowPoly/FREE_HumanLowPoly/Prefabs_Humans/HumanMale_Character_FREE.prefab";
     const string IdleSource = "Assets/store/Blink/Art/Animations/Animations_Starter_Pack/Movement/Idle.fbx";
-    static BuildBlinkCustomers() { EditorApplication.delayCall += Build; }
+    [MenuItem("Sandwich Game/Setup/Rebuild Blink Customers")]
     static AnimationClip Clip(string path) => AssetDatabase.LoadAllAssetsAtPath(path).OfType<AnimationClip>().First(c => !c.name.StartsWith("__"));
     static void Build()
     {

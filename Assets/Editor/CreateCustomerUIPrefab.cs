@@ -6,11 +6,10 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using SandwichGame;
-[InitializeOnLoad]
 public static class CreateCustomerUIPrefab
 {
     const string PathName = "Assets/SandwichGame/Prefabs/CustomerOrderUI.prefab";
-    static CreateCustomerUIPrefab() { EditorApplication.delayCall += Create; }
+    [MenuItem("Sandwich Game/Setup/Rebuild Customer Order UI")]
     static void Create()
     {
         if (EditorApplication.isPlayingOrWillChangePlaymode || File.Exists("Temp/CustomerUIPrefab.complete")) return;
@@ -59,7 +58,8 @@ public static class CreateCustomerUIPrefab
                 if (ui.OrderIcon == null || ui.Quantity == null || ui.TimerFill == null || ui.Canvas == null)
                     throw new Exception("UI references incomplete");
                 customer.SetOrder(2, GameConstants.CustomerWait);
-                if (ui.Quantity.text != "x2") throw new Exception("Order quantity failed");
+                if (customer.OrderLabel == null || customer.OrderLabel.text != "x" + customer.Remaining)
+                    throw new Exception("Order quantity failed");
                 customer.SetOrder(1, GameConstants.CustomerWait);
             }
             foreach (var customer in customers) Connect(customer);

@@ -3,10 +3,9 @@ using System.IO;
 using UnityEditor;
 using UnityEngine;
 
-[InitializeOnLoad]
 public static class UseUltimateBurgerPatty
 {
-    static UseUltimateBurgerPatty() { EditorApplication.delayCall += Convert; }
+    [MenuItem("Sandwich Game/Setup/Rebuild Patty Visuals")]
     static void Convert()
     {
         if (EditorApplication.isPlayingOrWillChangePlaymode || File.Exists("Temp/UltimatePatty.complete")) return;
@@ -30,7 +29,7 @@ public static class UseUltimateBurgerPatty
                     item.ColorRenderers = new Renderer[0];
                     for (int state = 0; state < 3; state++)
                     {
-                        var source = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Ultimate_Food_Pack/Prefabs/BurgerPatty_" + sources[state] + ".prefab");
+                        var source = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/store/Ultimate_Food_Pack/Prefabs/BurgerPatty_" + sources[state] + ".prefab");
                         if (source == null) throw new Exception("Patty source missing");
                         var visual = UnityEngine.Object.Instantiate(source, root.transform, false);
                         visual.name = "BurgerPatty_" + sources[state];
